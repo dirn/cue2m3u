@@ -9,6 +9,8 @@ enum Cli {
     Generate {
         #[structopt(long, short, help = "Scan subfolders of `input`")]
         recursive: bool,
+        #[structopt(long, short, help = "Overwrite existing playlists")]
+        overwrite: bool,
         #[structopt(
             required = true,
             help = "Location of the games to generate playlists for"
@@ -19,10 +21,15 @@ enum Cli {
 
 fn dispatch() -> Result<(), ()> {
     match Cli::from_args() {
-        Cli::Generate { source, recursive } => println!(
-            "generate playlists for {:?}{}",
+        Cli::Generate {
             source,
-            if recursive { " recursively" } else { "" }
+            recursive,
+            overwrite,
+        } => println!(
+            "generate playlists for {:?}{}, {} existing",
+            source,
+            if recursive { " recursively" } else { "" },
+            if overwrite { "overwrite" } else { "skip" }
         ),
     }
 
