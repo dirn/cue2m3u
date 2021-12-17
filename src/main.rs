@@ -7,6 +7,8 @@ use structopt::StructOpt;
 enum Cli {
     #[structopt(name = "generate", about = "Generate playlists")]
     Generate {
+        #[structopt(long, short, help = "Scan subfolders of `input`")]
+        recursive: bool,
         #[structopt(
             required = true,
             help = "Location of the games to generate playlists for"
@@ -17,7 +19,11 @@ enum Cli {
 
 fn dispatch() -> Result<(), ()> {
     match Cli::from_args() {
-        Cli::Generate { source } => println!("generate playlists for {:?}", source),
+        Cli::Generate { source, recursive } => println!(
+            "generate playlists for {:?}{}",
+            source,
+            if recursive { " recursively" } else { "" }
+        ),
     }
 
     Ok(())
