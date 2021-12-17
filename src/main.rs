@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process;
 use structopt::StructOpt;
 
@@ -5,12 +6,18 @@ use structopt::StructOpt;
 #[structopt(name = "cue2m3u", about = "Generate playlists for disc-based games.")]
 enum Cli {
     #[structopt(name = "generate", about = "Generate playlists")]
-    Generate {},
+    Generate {
+        #[structopt(
+            required = true,
+            help = "Location of the games to generate playlists for"
+        )]
+        source: PathBuf,
+    },
 }
 
 fn dispatch() -> Result<(), ()> {
     match Cli::from_args() {
-        Cli::Generate {} => println!("generate playlists"),
+        Cli::Generate { source } => println!("generate playlists for {:?}", source),
     }
 
     Ok(())
