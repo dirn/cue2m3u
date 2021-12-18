@@ -14,3 +14,4 @@ license-file = "LICENSE"
 
 [dependencies]
 structopt = "0.3.25"
+walkdir = "2.3.2"
