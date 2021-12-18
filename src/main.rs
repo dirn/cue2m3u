@@ -56,16 +56,20 @@ fn generate_playlists(source: PathBuf, recursive: bool, overwrite: bool) -> Resu
         if overwrite { "overwrite" } else { "skip" }
     );
     if let Ok(cue_files) = find_cue_files(&source, recursive) {
-        let cue_files: Vec<PathBuf> = cue_files
-            .into_iter()
-            .map(|f| f.strip_prefix(&source).unwrap().to_owned())
-            .collect();
+        let cue_files = make_relative_paths(&source, cue_files);
         println!("found {:?}", cue_files);
     } else {
         return Err("Error finding cue files".to_owned());
     }
 
     Ok(())
+}
+
+fn make_relative_paths(source: &PathBuf, absolute_paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    absolute_paths
+        .into_iter()
+        .map(|f| f.strip_prefix(&source).unwrap().to_owned())
+        .collect()
 }
 
 fn main() {
