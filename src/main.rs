@@ -27,25 +27,11 @@ fn dispatch() -> Result<(), String> {
             source,
             recursive,
             overwrite,
-        } => {
-            println!(
-                "generate playlists for {:?}{}, {} existing",
-                source,
-                if recursive { " recursively" } else { "" },
-                if overwrite { "overwrite" } else { "skip" }
-            );
-            if let Ok(cue_files) = find_cue_files(source, recursive) {
-                println!("found {:?}", cue_files);
-            } else {
-                return Err("Error finding cue files".to_owned());
-            }
-        }
+        } => generate_playlists(source, recursive, overwrite),
     }
-
-    Ok(())
 }
 
-fn find_cue_files(source: PathBuf, recursive: bool) -> io::Result<Vec<PathBuf>> {
+fn find_cue_files(source: &PathBuf, recursive: bool) -> io::Result<Vec<PathBuf>> {
     let mut cue_files = vec![];
 
     let mut walker = WalkDir::new(source).follow_links(true).sort_by_file_name();
@@ -60,6 +46,22 @@ fn find_cue_files(source: PathBuf, recursive: bool) -> io::Result<Vec<PathBuf>> 
     }
 
     Ok(cue_files)
+}
+
+fn generate_playlists(source: PathBuf, recursive: bool, overwrite: bool) -> Result<(), String> {
+    println!(
+        "generate playlists for {:?}{}, {} existing",
+        source,
+        if recursive { " recursively" } else { "" },
+        if overwrite { "overwrite" } else { "skip" }
+    );
+    if let Ok(cue_files) = find_cue_files(&source, recursive) {
+        println!("found {:?}", cue_files);
+    } else {
+        return Err("Error finding cue files".to_owned());
+    }
+
+    Ok(())
 }
 
 fn main() {
