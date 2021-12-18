@@ -1,6 +1,8 @@
+use std::io;
 use std::path::PathBuf;
 use std::process;
 use structopt::StructOpt;
+use walkdir::WalkDir;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "cue2m3u", about = "Generate playlists for disc-based games.")]
@@ -19,21 +21,45 @@ enum Cli {
     },
 }
 
-fn dispatch() -> Result<(), ()> {
+fn dispatch() -> Result<(), String> {
     match Cli::from_args() {
         Cli::Generate {
             source,
             recursive,
             overwrite,
-        } => println!(
-            "generate playlists for {:?}{}, {} existing",
-            source,
-            if recursive { " recursively" } else { "" },
-            if overwrite { "overwrite" } else { "skip" }
-        ),
+        } => {
+            println!(
+                "generate playlists for {:?}{}, {} existing",
+                source,
+                if recursive { " recursively" } else { "" },
+                if overwrite { "overwrite" } else { "skip" }
+            );
+            if let Ok(cue_files) = find_cue_files(source, recursive) {
+                println!("found {:?}", cue_files);
+            } else {
+                return Err("Error finding cue files".to_owned());
+            }
+        }
     }
 
     Ok(())
+}
+
+fn find_cue_files(source: PathBuf, recursive: bool) -> io::Result<Vec<PathBuf>> {
+    let mut cue_files = vec![];
+
+    let mut walker = WalkDir::new(source).follow_links(true).sort_by_file_name();
+    if !recursive {
+        walker = walker.max_depth(1);
+    }
+    for entry in walker.into_iter().filter_map(|e| e.ok()) {
+        let name = entry.file_name().to_string_lossy();
+        if name.ends_with(".cue") {
+            cue_files.push(entry.path().to_owned());
+        }
+    }
+
+    Ok(cue_files)
 }
 
 fn main() {
