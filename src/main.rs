@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::fs::OpenOptions;
 use std::io;
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
 use structopt::StructOpt;
@@ -89,7 +91,11 @@ fn generate_playlists(source: PathBuf, recursive: bool, overwrite: bool) -> Resu
         let cue_files = make_relative_paths(&source, cue_files);
         let cue_files_by_folder = group_files_by_folder(&cue_files);
         let playlists = make_playlists(&source, cue_files_by_folder);
-        println!("found {:?}", playlists);
+        for playlist in playlists {
+            if let Err(e) = write_playlist(&source, playlist, overwrite) {
+                return Err(format!("Error writing {}", e));
+            }
+        }
     } else {
         return Err("Error finding cue files".to_owned());
     }
@@ -143,4 +149,21 @@ fn main() {
             1
         }
     });
+}
+
+fn write_playlist(source: &PathBuf, playlist: Playlist, overwrite: bool) -> io::Result<()> {
+    let mut file = match OpenOptions::new()
+        .write(true)
+        .create_new(!overwrite)
+        .open(source.join(playlist.to_m3u()))
+    {
+        Ok(file) => file,
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
+        Err(e) => return Err(e),
+    };
+    for line in playlist.to_contents() {
+        file.write_all(line.as_bytes())?;
+        file.write_all(b"\n")?;
+    }
+    Ok(())
 }
