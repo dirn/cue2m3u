@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use structopt::StructOpt;
 use walkdir::WalkDir;
@@ -57,12 +58,24 @@ fn generate_playlists(source: PathBuf, recursive: bool, overwrite: bool) -> Resu
     );
     if let Ok(cue_files) = find_cue_files(&source, recursive) {
         let cue_files = make_relative_paths(&source, cue_files);
-        println!("found {:?}", cue_files);
+        let cue_files_by_folder = group_files_by_folder(&cue_files);
+        println!("found {:?}", cue_files_by_folder);
     } else {
         return Err("Error finding cue files".to_owned());
     }
 
     Ok(())
+}
+
+fn group_files_by_folder(files: &Vec<PathBuf>) -> HashMap<&Path, Vec<&PathBuf>> {
+    let mut grouped_files = HashMap::new();
+
+    for file in files {
+        let prefix = file.parent().unwrap_or(Path::new(""));
+        grouped_files.entry(prefix).or_insert(vec![]).push(file);
+    }
+
+    grouped_files
 }
 
 fn make_relative_paths(source: &PathBuf, absolute_paths: Vec<PathBuf>) -> Vec<PathBuf> {
