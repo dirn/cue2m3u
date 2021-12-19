@@ -1,9 +1,38 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process;
 use structopt::StructOpt;
 use walkdir::WalkDir;
+
+struct Playlist {
+    name: String,
+    files: Vec<PathBuf>,
+}
+
+impl Playlist {
+    fn to_contents(&self) -> Vec<String> {
+        self.files
+            .clone()
+            .into_iter()
+            .map(|f| f.to_string_lossy().to_string())
+            .collect()
+    }
+
+    fn to_m3u(&self) -> String {
+        format!("{}.m3u", self.name)
+    }
+}
+
+impl fmt::Debug for Playlist {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Playlist")
+            .field("m3u", &self.to_m3u())
+            .field("contents", &self.to_contents())
+            .finish()
+    }
+}
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "cue2m3u", about = "Generate playlists for disc-based games.")]
@@ -59,7 +88,8 @@ fn generate_playlists(source: PathBuf, recursive: bool, overwrite: bool) -> Resu
     if let Ok(cue_files) = find_cue_files(&source, recursive) {
         let cue_files = make_relative_paths(&source, cue_files);
         let cue_files_by_folder = group_files_by_folder(&cue_files);
-        println!("found {:?}", cue_files_by_folder);
+        let playlists = make_playlists(&source, cue_files_by_folder);
+        println!("found {:?}", playlists);
     } else {
         return Err("Error finding cue files".to_owned());
     }
@@ -67,15 +97,35 @@ fn generate_playlists(source: PathBuf, recursive: bool, overwrite: bool) -> Resu
     Ok(())
 }
 
-fn group_files_by_folder(files: &Vec<PathBuf>) -> HashMap<&Path, Vec<&PathBuf>> {
+fn group_files_by_folder(files: &Vec<PathBuf>) -> HashMap<&Path, Vec<PathBuf>> {
     let mut grouped_files = HashMap::new();
 
     for file in files {
         let prefix = file.parent().unwrap_or(Path::new(""));
-        grouped_files.entry(prefix).or_insert(vec![]).push(file);
+        grouped_files
+            .entry(prefix)
+            .or_insert(vec![])
+            .push(file.to_owned());
     }
 
     grouped_files
+}
+
+fn make_playlists(source: &PathBuf, grouped_files: HashMap<&Path, Vec<PathBuf>>) -> Vec<Playlist> {
+    let mut playlists: Vec<Playlist> = vec![];
+
+    for (name, files) in grouped_files.into_iter() {
+        let mut playlist_name = name.to_string_lossy().to_string();
+        if playlist_name == "" {
+            playlist_name = source.file_name().unwrap().to_string_lossy().to_string();
+        }
+        playlists.push(Playlist {
+            name: playlist_name,
+            files,
+        });
+    }
+
+    playlists
 }
 
 fn make_relative_paths(source: &PathBuf, absolute_paths: Vec<PathBuf>) -> Vec<PathBuf> {
