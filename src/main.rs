@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::fs::OpenOptions;
+use std::fs::{canonicalize, OpenOptions};
 use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -81,6 +81,7 @@ fn find_cue_files(source: &PathBuf, recursive: bool) -> io::Result<Vec<PathBuf>>
 }
 
 fn generate_playlists(source: PathBuf, recursive: bool, overwrite: bool) -> Result<(), String> {
+    let source = canonicalize(source).unwrap();
     if let Ok(cue_files) = find_cue_files(&source, recursive) {
         let cue_files = make_relative_paths(&source, cue_files);
         let cue_files_by_folder = group_files_by_folder(&cue_files);
