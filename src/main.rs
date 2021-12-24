@@ -1,3 +1,5 @@
+use env_logger;
+use log::{debug, info};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::{canonicalize, OpenOptions};
@@ -73,7 +75,9 @@ fn find_cue_files(source: &PathBuf, recursive: bool) -> io::Result<Vec<PathBuf>>
     for entry in walker.into_iter().filter_map(|e| e.ok()) {
         let name = entry.file_name().to_string_lossy();
         if name.ends_with(".cue") {
-            cue_files.push(entry.path().to_owned());
+            let cue_file = entry.path().to_owned();
+            debug!("found {:?}", cue_file);
+            cue_files.push(cue_file);
         }
     }
 
@@ -81,6 +85,12 @@ fn find_cue_files(source: &PathBuf, recursive: bool) -> io::Result<Vec<PathBuf>>
 }
 
 fn generate_playlists(source: PathBuf, recursive: bool, overwrite: bool) -> Result<(), String> {
+    info!(
+        "generating playlists for {:?}{}, {} existing",
+        source,
+        if recursive { " recursively" } else { "" },
+        if overwrite { "overwriting" } else { "skipping" }
+    );
     let source = canonicalize(source).unwrap();
     if let Ok(cue_files) = find_cue_files(&source, recursive) {
         let cue_files = make_relative_paths(&source, cue_files);
@@ -137,6 +147,8 @@ fn make_relative_paths(source: &PathBuf, absolute_paths: Vec<PathBuf>) -> Vec<Pa
 }
 
 fn main() {
+    env_logger::init();
+
     process::exit(match dispatch() {
         Ok(_) => 0,
         Err(e) => {
@@ -153,9 +165,13 @@ fn write_playlist(source: &PathBuf, playlist: Playlist, overwrite: bool) -> io::
         .open(source.join(playlist.to_m3u()))
     {
         Ok(file) => file,
-        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => {
+            debug!("skipping {:?}", playlist.to_m3u());
+            return Ok(());
+        }
         Err(e) => return Err(e),
     };
+    debug!("writing {:?}", playlist.to_m3u());
     for line in playlist.to_contents() {
         file.write_all(line.as_bytes())?;
         file.write_all(b"\n")?;
